@@ -1,0 +1,7 @@
+---
+- name: Ensure cron job for postgres db backup is present
+  become: yes
+  template:
+    src: nightly_pg_backup
+    dest: /etc/cron.d/nightly_pg_backup
+    mode: 0755

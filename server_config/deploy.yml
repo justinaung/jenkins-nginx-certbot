@@ -1,0 +1,47 @@
+###
+# This playbook deploys the whole application stack in this site.
+###
+- name: Apply Common Configuration to Server
+  hosts: all
+  user: deployer
+  roles:
+    - common
+  tags: ['common']
+
+# - name: Install Nginx and SSL Certificates
+#   hosts: all
+#   user: deployer
+#   vars:
+#     domain: 'jenkins.myantype.com'
+#     ssl_flag: '--staging'
+#   roles:
+#     - 'nginx_ssl'
+#   tags: ['nginx']
+
+- name: Install and Configure Docker
+  hosts: all
+  user: deployer
+  become: yes
+  vars:
+    docker_edition: ce
+    docker_package: "docker-{{ docker_edition }}"
+
+    docker_compose_version: '1.23.1'
+
+    docker_users:
+      - deployer
+
+  roles:
+    - { role: 'geerlingguy.docker', tags: ['docker'] }
+
+- name: Docker Hub Authentication
+  hosts: all
+  user: deployer
+  tasks:
+    - name: Log into Docker Hub
+      become: yes
+      docker_login:
+        username: "{{ lookup('env', 'DOCKER_HUB_USERNAME') }}"
+        password: "{{ lookup('env', 'DOCKER_HUB_PASSWORD') }}"
+        config_path: "/home/{{ deploy_user }}/.docker/config.json"
+  tags: ['docker', 'auth']

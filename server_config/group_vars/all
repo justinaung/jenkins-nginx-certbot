@@ -1,0 +1,15 @@
+app_name: jenkins
+deploy_user: deployer
+deploy_group: deployers
+ansible_become_pass: "{{ lookup('env', 'DEPLOYER_PASSWD') }}"
+## this is the local directory with the SSH keys and known_hosts
+## file do not include a trailing slash
+## ssh_dir: ~/Workspace/myanType/myan-typing/myan-type-server/ssh_keys/dev.myantype.com
+
+letsencrypt:
+  contact_email: justin.aung19@gmail.com
+  web_root: /var/lib/letsencrypt/
+  scripts_folder: /etc/letsencrypt/scripts
+  ssl_dhparams_url: https://raw.githubusercontent.com/certbot/certbot/master/certbot/ssl-dhparams.pem
+  renewal:
+    cron_expression: 0 */12 * * *

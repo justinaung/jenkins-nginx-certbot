@@ -1,0 +1,3 @@
+#!/bin/bash
+certbot -q renew --renew-hook "systemctl reload nginx"
+date > /tmp/letsencrypt_last_cron_execution

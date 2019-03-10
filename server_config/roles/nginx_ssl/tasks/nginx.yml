@@ -1,0 +1,41 @@
+##
+# Configuration for Nginx web server
+##
+---
+- name: Ensure default symbolic linked website is deleted
+  file: path=/etc/nginx/sites-enabled/default state=absent
+  become: yes
+
+- name: Write Nginx main configuration
+  template: 
+    src=nginx.conf
+    dest=/etc/nginx/nginx.conf
+  become: yes
+
+- name: Write Nginx configuration
+  template: 
+    src=frontend.conf.j2
+    dest="/etc/nginx/conf.d/{{ domain }}.conf"
+  become: yes
+  tags: 
+    - nginx_site_conf
+
+- name: Write Nginx backend configuration
+  template: 
+    src=backend.conf.j2
+    dest="/etc/nginx/conf.d/{{ backend_domain }}.conf"
+  become: yes
+  tags: 
+    - nginx_site_conf
+
+- name: Write Nginx uwsgi params configuration
+  template: 
+    src=uwsgi_params
+    dest=/etc/nginx/uwsgi_params
+  become: yes
+
+- name: Write Nginx snippets
+  copy: 
+    src="{{ role_path }}/templates/snippets"
+    dest=/etc/nginx/
+  become: yes

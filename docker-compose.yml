@@ -1,0 +1,43 @@
+version: '3.7'
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:1.15.8-alpine
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/jenkins.conf:/etc/nginx/conf.d/jenkins.conf
+      - ./nginx/snippets:/etc/nginx/snippets
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - /etc/ssl/certs:/etc/ssl/certs
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    depends_on:
+      - jenkins
+
+  certbot:
+    container_name: certbot
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  jenkins:
+    container_name: jenkins
+    image: jenkinsci/blueocean
+    user: root
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: 
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  jenkins-data:

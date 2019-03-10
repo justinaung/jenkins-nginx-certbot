@@ -1,0 +1,58 @@
+# updates the API package cache and install packages
+# servers necessary for web. also enables firewall
+##
+- name: Set timezone to Australia/Sydney
+  become: yes
+  timezone:
+    name: Australia/Sydney
+- name: Restart crond
+  become: yes
+  systemd:
+    name: cron
+    state: restarted
+
+- name: Add Certbot Repository
+  apt_repository: repo='ppa:certbot/certbot' state=present 
+  become: yes
+
+- name: Update Apt Cache 
+  apt: update_cache=yes cache_valid_time=3600
+  become: yes
+
+- name: Install Web Packages
+  apt:
+    update_cache: yes
+    pkg:
+      - fail2ban
+      - python-pip
+      - virtualenv
+      # - certbot
+  become: yes
+
+- name: Ensure setuptools is installed
+  become: yes
+  pip:
+    name: setuptools
+- name: Ensure docker python is installed
+  become: yes
+  pip:
+    name: docker
+
+- name: Allow SSH in firewall
+  ufw: 
+    rule: allow
+    name: OpenSSH
+  become: yes
+- name: Allow 80 in firewall
+  ufw: 
+    rule: allow
+    port: 80
+  become: yes
+- name: Allow 443 in firewall
+  ufw: 
+    rule: allow
+    port: 443
+  become: yes
+- name: Enable firewall
+  ufw: state=enabled
+  become: yes

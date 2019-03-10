@@ -1,0 +1,116 @@
+---
+- name: Ensure /etc/letsencrypt/live/{{ frontend_domain }} dir exists
+  become: yes
+  file:
+    path: /etc/letsencrypt/live/{{ frontend_domain }}
+    state: directory
+- name: Check if /etc/letsencrypt/live/{{ frontend_domain }}/chain.pem file exists
+  become: yes
+  stat:
+      path: "/etc/letsencrypt/live/{{ frontend_domain }}/chain.pem"
+  register: frontendCertInstalled
+- name: Create dummy certificate for {{ frontend_domain }}
+  become: yes
+  raw: "openssl req -x509 -nodes -newkey rsa:1024 -days 1 \
+    -keyout '/etc/letsencrypt/live/{{frontend_domain}}/privkey.pem' \
+    -out '/etc/letsencrypt/live/{{frontend_domain}}/fullchain.pem' \
+    -subj '/CN=localhost'"
+  when: frontendCertInstalled.stat.exists == False
+
+- name: Ensure /etc/letsencrypt/live/{{ backend_domain }} dir exists
+  become: yes
+  file:
+    path: /etc/letsencrypt/live/{{ backend_domain }}
+    state: directory
+- name: Check if /etc/letsencrypt/live/{{ backend_domain }}/chain.pem file exists
+  become: yes
+  stat:
+      path: "/etc/letsencrypt/live/{{ backend_domain }}/chain.pem"
+  register: backendCertInstalled
+- name: Create dummy certificate for {{ backend_domain }}
+  become: yes
+  raw: "openssl req -x509 -nodes -newkey rsa:1024 -days 1 \
+    -keyout '/etc/letsencrypt/live/{{backend_domain}}/privkey.pem' \
+    -out '/etc/letsencrypt/live/{{backend_domain}}/fullchain.pem' \
+    -subj '/CN=localhost'"
+  when: backendCertInstalled.stat.exists == False
+
+- name: Add SSL DH Params
+  become: yes
+  raw: "curl -s {{ letsencrypt.ssl_dhparams_url }} > /etc/ssl/certs/dhparam.pem"
+
+- name: Restart Nginx
+  become: yes
+  service: name=nginx state=restarted
+
+- name: Delete dummy certificates
+  become: yes
+  raw: "rm -rf /etc/letsencrypt/live/{{ frontend_domain }} \
+    rm -rf /etc/letsencrypt/live/{{ backend_domain }}"
+  when: 
+    - frontendCertInstalled.stat.exists == False 
+    - backendCertInstalled.stat.exists == False 
+
+- name: Ensure directroy for well known acme challenge exists
+  become: yes
+  file:
+    path: /var/lib/letsencrypt/.well-known
+    state: directory
+    group: www-data
+    mode: g+s
+
+- name: Check if /etc/letsencrypt/live/{{frontend_domain}} file exists
+  become: yes
+  stat:
+      path: "/etc/letsencrypt/live/{{frontend_domain}}"
+  register: letsencryptFrontendCertInstalled
+
+- name: Ensure initial frontend certificate is created
+  become: yes
+  raw: "letsencrypt certonly -n --agree-tos --webroot -w {{ letsencrypt.web_root }} \
+        --email {{letsencrypt.contact_email}} -d {{frontend_domain}} {{ssl_flag}}"
+  when: letsencryptFrontendCertInstalled.stat.exists == False
+
+- name: Check if /etc/letsencrypt/live/{{backend_domain}} file exists
+  become: yes
+  stat:
+      path: "/etc/letsencrypt/live/{{backend_domain}}"
+  register: letsencryptBackendCertInstalled
+
+- name: Ensure initial backend certificate is created
+  become: yes
+  raw: "letsencrypt certonly -n --agree-tos --webroot -w {{ letsencrypt.web_root }} \
+        --email {{letsencrypt.contact_email}} -d {{backend_domain}} {{ssl_flag}}"
+  when: letsencryptBackendCertInstalled.stat.exists == False
+
+- name: Ensure default certbot cron is disabled
+  become: yes
+  file:
+      dest: /etc/cron.d/certbot
+      state: absent
+
+- name: Ensure {{letsencrypt.scripts_folder}} dir exists
+  become: yes
+  file: path={{letsencrypt.scripts_folder}} state=directory
+
+- name: Ensure script for certificate renewal is present
+  become: yes
+  template:
+      src: letsencrypt_renew_certs.sh.j2
+      dest: "{{letsencrypt.scripts_folder}}/letsencrypt_renew_certs.sh"
+      mode: 0755
+
+- name: Ensure cron job for certificate renewal is present
+  become: yes
+  template:
+      src: letsencrypt_renewal_cron.j2
+      dest: /etc/cron.d/letsencrypt_renewal_cron
+      mode: 0755
+
+- name: Reload Nginx for changes to take effect
+  service: name=nginx state=reloaded
+  become: yes
+
+- name: Dry run certificate renewal
+  become: yes
+  raw: certbot renew --dry-run

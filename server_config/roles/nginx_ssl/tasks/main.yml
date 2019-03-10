@@ -1,0 +1,10 @@
+###
+# Configure Nginx and Lets Encrypt
+###
+
+- include: nginx.yml
+  tags:
+    - nginx
+- include: letsencrypt.yml
+  tags:
+    - letsencrypt
