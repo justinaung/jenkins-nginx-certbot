@@ -22,17 +22,15 @@ env.key_filename = '~/.ssh/id_rsa'
 env.hosts = [os.environ.get('DEPLOYING_HOST', '')]
 
 # your fulln name for the new non-root user
-env.new_user_full_name = os.environ.get(
-    'NEW_USER_FULL_NAME', 'Htet Naing Aung'
-)
+env.new_user_full_name = os.environ.get('NEW_USER_FULL_NAME')
 
 # username for the new non-root user
-env.new_user = os.environ.get('NEW_USERNAME', 'deployer')
-env.passwd = os.environ.get('DEPLOYER_PASSWD', '')
+env.new_user = os.environ.get('NEW_USERNAME')
+env.passwd = os.environ.get('DEPLOYER_PASSWD')
 env.domain = os.environ.get('DEPLOYING_DOMAIN')
 
 # group name for the new non-root user
-env.new_user_grp = os.environ.get('NEW_USER_GROUP', 'deployers')
+env.new_user_grp = os.environ.get('NEW_USER_GROUP')
 
 # local filesystem directory where your jenkinskey.pub and 
 # authorized_keys files are going to be created (they will be scp'd
@@ -42,15 +40,12 @@ SSH_KEY_NAME = 'deployer_key'
 env.ssh_key_dir = f'./ssh_keys/{env.domain}'
 SSH_KEY_FILE = f'{env.ssh_key_dir}/{SSH_KEY_NAME}'
 
+
 def bootstrap():
     if not env.hosts[0]:
       print('---- ERROR ----')
       print('The environment variable DEPLOYING_HOST is not included!')
       exit(1)
-    sed('/etc/ssh/sshd_config', '^UsePAM yes', 'UsePAM no')
-    sed('/etc/ssh/sshd_config', '^PermitRootLogin yes', 'PermitRootLogin no')
-    sed('/etc/ssh/sshd_config', '^#PasswordAuthentication yes',
-        'PasswordAuthentication no')
     _create_privileged_group()
     _create_privileged_user()
     _create_ssh_keys()
@@ -59,6 +54,13 @@ def bootstrap():
     run('wget -O /etc/ssl/certs/cloudflare.crt https://support.cloudflare.com/hc/en-us/article_attachments/201243967/origin-pull-ca.pem')
     run('apt install python -y')  # ansible uses python 2
     run('service ssh reload')
+
+
+def _disable_root_passwd_login():
+    sed('/etc/ssh/sshd_config', '^UsePAM yes', 'UsePAM no')
+    sed('/etc/ssh/sshd_config', '^PermitRootLogin yes', 'PermitRootLogin no')
+    sed('/etc/ssh/sshd_config', '^#PasswordAuthentication yes',
+        'PasswordAuthentication no')
 
 
 def _create_privileged_group():
@@ -89,6 +91,7 @@ def _create_ssh_keys():
 
 def _upload_keys():
     put(f'{env.ssh_key_dir}/authorized_keys', f'/home/{env.new_user}/.ssh')
+
 
 def _customize_vimrc():
     run(f'wget -O /home/{env.new_user}/.vimrc'
