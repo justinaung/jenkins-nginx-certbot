@@ -1,6 +1,8 @@
 variable "digitalocean_token" {}
 variable "digitalocean_ssh_fingerprint" {}
 variable "jenkins_ssh_a_name" {}
+variable "jenkins_ssh_name" {}
+
 variable "cloudflare_email" {}
 variable "cloudflare_token" {}
 
@@ -30,7 +32,7 @@ resource "digitalocean_droplet" "jenkins" {
   }
 
   provisioner "local-exec" {
-    command = "ssh-keygen -R ssh01.jenkins.myantype.com"
+    command = "ssh-keygen -R ${var.jenkins_ssh_name}"
     when    = "destroy"
   }
 }
