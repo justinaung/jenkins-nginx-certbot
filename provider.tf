@@ -2,9 +2,11 @@ variable "digitalocean_token" {}
 variable "digitalocean_ssh_fingerprint" {}
 variable "jenkins_ssh_a_name" {}
 variable "jenkins_ssh_name" {}
+variable "domain_name" {}
 
 variable "cloudflare_email" {}
 variable "cloudflare_token" {}
+
 
 provider "digitalocean" {
   token = "${var.digitalocean_token}"
@@ -38,16 +40,17 @@ resource "digitalocean_droplet" "jenkins" {
 }
 
 resource "cloudflare_record" "jenkins_ssh" {
-  domain = "myantype.com"  
+  domain = "${var.domain_name}"  
   name = "${var.jenkins_ssh_a_name}"
   value = "${digitalocean_droplet.jenkins.ipv4_address}"
   type = "A"
 }
 
 resource "cloudflare_record" "jenkins" {
-  domain = "myantype.com"
+  domain = "${var.domain_name}"
   name = "jenkins"
   value = "${digitalocean_droplet.jenkins.ipv4_address}"
   type = "A"
   proxied = true
 }
+
